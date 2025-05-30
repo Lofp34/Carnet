@@ -1,0 +1,8 @@
+{
+  "name": "Mon Carnet d'Émotions",
+  "description": "Une application pour enregistrer et suivre vos émotions, pensées et comportements, avec saisie vocale.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "prompt": ""
+}
