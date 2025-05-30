@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { JournalEntry } from './types';
 import { JournalEntryForm } from './components/JournalEntryForm';
@@ -38,6 +37,37 @@ const App: React.FC = () => {
     linkElement.click();
   };
 
+  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedEntries = JSON.parse(e.target?.result as string);
+        if (Array.isArray(importedEntries)) {
+          // Fusionner les entrées importées avec les entrées existantes
+          const mergedEntries = [...importedEntries, ...entries];
+          // Supprimer les doublons basés sur l'ID
+          const uniqueEntries = Array.from(new Map(mergedEntries.map(entry => [entry.id, entry])).values());
+          // Trier par date (plus récent en premier)
+          const sortedEntries = uniqueEntries.sort((a, b) => 
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+          setEntries(sortedEntries);
+          saveEntriesToLocalStorage(sortedEntries);
+        } else {
+          alert("Le fichier importé n'a pas le bon format.");
+        }
+      } catch (error) {
+        alert("Erreur lors de l'importation du fichier. Vérifiez que c'est un fichier JSON valide.");
+      }
+    };
+    reader.readAsText(file);
+    // Réinitialiser l'input pour permettre l'importation du même fichier
+    event.target.value = '';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-indigo-50 to-purple-100 py-8 px-4 sm:px-6 lg:px-8">
       <header className="text-center mb-10">
@@ -64,6 +94,15 @@ const App: React.FC = () => {
                 <i className="fas fa-download mr-2"></i>Télécharger les Données
               </button>
             )}
+            <label className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 text-lg cursor-pointer">
+              <i className="fas fa-upload mr-2"></i>Importer les Données
+              <input
+                type="file"
+                accept=".json"
+                onChange={importData}
+                className="hidden"
+              />
+            </label>
           </div>
         )}
 
