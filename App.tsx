@@ -6,11 +6,16 @@ import { JournalEntryCard } from './components/JournalEntryCard';
 const App: React.FC = () => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [lastExportDate, setLastExportDate] = useState<string | null>(null);
 
   useEffect(() => {
     const storedEntries = localStorage.getItem('journalEntries');
+    const storedLastExport = localStorage.getItem('lastExportDate');
     if (storedEntries) {
       setEntries(JSON.parse(storedEntries));
+    }
+    if (storedLastExport) {
+      setLastExportDate(storedLastExport);
     }
   }, []);
 
@@ -25,8 +30,21 @@ const App: React.FC = () => {
     setIsFormVisible(false);
   };
 
-  const downloadData = () => {
-    const dataStr = JSON.stringify(entries, null, 2);
+  const downloadData = (onlyNewEntries: boolean = false) => {
+    let dataToExport = entries;
+    
+    if (onlyNewEntries && lastExportDate) {
+      dataToExport = entries.filter(entry => 
+        new Date(entry.timestamp) > new Date(lastExportDate)
+      );
+    }
+
+    if (dataToExport.length === 0) {
+      alert("Aucune donnée à exporter.");
+      return;
+    }
+
+    const dataStr = JSON.stringify(dataToExport, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
     
     const exportFileDefaultName = `carnet_emotions_${new Date().toISOString().slice(0,10)}.json`;
@@ -35,6 +53,11 @@ const App: React.FC = () => {
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
+
+    // Mettre à jour la date du dernier export
+    const currentDate = new Date().toISOString();
+    setLastExportDate(currentDate);
+    localStorage.setItem('lastExportDate', currentDate);
   };
 
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,12 +110,20 @@ const App: React.FC = () => {
               <i className="fas fa-plus-circle mr-2"></i>Nouvelle Entrée
             </button>
             {entries.length > 0 && (
-              <button
-                onClick={downloadData}
-                className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 text-lg"
-              >
-                <i className="fas fa-download mr-2"></i>Télécharger les Données
-              </button>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={() => downloadData(false)}
+                  className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 text-lg"
+                >
+                  <i className="fas fa-download mr-2"></i>Télécharger Toutes les Données
+                </button>
+                <button
+                  onClick={() => downloadData(true)}
+                  className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 text-lg"
+                >
+                  <i className="fas fa-download mr-2"></i>Télécharger les Nouvelles Données
+                </button>
+              </div>
             )}
             <label className="w-full sm:w-auto bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 text-lg cursor-pointer">
               <i className="fas fa-upload mr-2"></i>Importer les Données
