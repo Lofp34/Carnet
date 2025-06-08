@@ -11,8 +11,8 @@ interface EmotionCheckboxProps {
 export const EmotionCheckbox: React.FC<EmotionCheckboxProps> = ({ emotion, isSelected, onToggle }) => {
   return (
     <label
-      className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105
-                  ${isSelected ? 'bg-sky-500 text-white border-sky-600 shadow-md' : 'bg-white hover:bg-slate-50 border-slate-300'}`}
+      className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ease-in-out transform active:scale-95 hover:scale-105 touch-manipulation
+                  ${isSelected ? 'bg-sky-500 text-white border-sky-600 shadow-lg' : 'bg-white hover:bg-slate-50 border-slate-300 shadow-sm'}`}
     >
       <input
         type="checkbox"
@@ -20,8 +20,8 @@ export const EmotionCheckbox: React.FC<EmotionCheckboxProps> = ({ emotion, isSel
         onChange={() => onToggle(emotion.id)}
         className="sr-only" // Tailwind class for visually hidden but accessible
       />
-      <span className="text-xl mr-2">{emotion.emoji}</span>
-      <span className="text-sm font-medium">{emotion.name}</span>
+      <span className="text-2xl mr-3">{emotion.emoji}</span>
+      <span className="text-sm font-medium leading-tight">{emotion.name}</span>
     </label>
   );
 };

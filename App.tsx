@@ -5,7 +5,7 @@ import { JournalEntryCard } from './components/JournalEntryCard';
 
 const App: React.FC = () => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [isFormVisible, setIsFormVisible] = useState(false);
+  const [isFormVisible, setIsFormVisible] = useState(true);
   const [lastExportDate, setLastExportDate] = useState<string | null>(null);
 
   useEffect(() => {
@@ -144,7 +144,7 @@ const App: React.FC = () => {
               onClick={() => setIsFormVisible(false)}
               className="mt-6 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg transition duration-150"
             >
-              Annuler
+              <i className="fas fa-list mr-2"></i>Voir mes entrées
             </button>
           </div>
         )}

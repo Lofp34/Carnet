@@ -44,7 +44,9 @@ export const VoiceInputField: React.FC<VoiceInputFieldProps> = ({ id, label, val
     onChange(e.target.value);
   };
 
-  const toggleListening = () => {
+  const toggleListening = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (isListening) {
       stopListening();
     } else {

@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { JournalEntry, Emotion } from '../types';
-import { EMOTIONS_LIST } from '../constants';
+import { JournalEntry } from '../types';
 import { VoiceInputField } from './VoiceInputField';
-import { EmotionCheckbox } from './EmotionCheckbox';
+import { EmotionSelector } from './EmotionSelector';
 import { RatingInput } from './RatingInput';
 
 interface JournalEntryFormProps {
@@ -79,19 +78,10 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({ onSave, init
         placeholder="Décrivez le contexte, les faits..."
       />
 
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">Quelles sont les émotions associées ?</label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {EMOTIONS_LIST.map((emotion: Emotion) => (
-            <EmotionCheckbox
-              key={emotion.id}
-              emotion={emotion}
-              isSelected={selectedEmotions.includes(emotion.id)}
-              onToggle={handleEmotionToggle}
-            />
-          ))}
-        </div>
-      </div>
+      <EmotionSelector
+        selectedEmotions={selectedEmotions}
+        onEmotionToggle={handleEmotionToggle}
+      />
       
       <VoiceInputField
         id="details"

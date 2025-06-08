@@ -25,6 +25,7 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
   // FIX: SpeechRecognition here now refers to the global interface, not the (renamed) constant.
   // FIX: Changed SpeechRecognition type to 'any' to resolve "Cannot find name 'SpeechRecognition'" error.
   const [recognition, setRecognition] = useState<any | null>(null);
+  const [userInteracted, setUserInteracted] = useState(false);
 
   const isSupported = !!SpeechRecognitionAPI;
 
@@ -76,10 +77,12 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
 
   const startListening = useCallback(() => {
     if (recognition && !isListening) {
+      setUserInteracted(true);
       setTranscript(''); // Reset transcript for new session
       setInterimTranscript('');
       setError(null);
       try {
+        // Ensure we only start listening with explicit user interaction
         recognition.start();
         setIsListening(true);
       } catch (e) {
