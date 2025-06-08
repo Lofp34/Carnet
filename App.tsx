@@ -1,36 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { JournalEntry } from './types';
 import { JournalEntryForm } from './components/JournalEntryForm';
 import { JournalEntryCard } from './components/JournalEntryCard';
+import { NotificationContainer } from './components/NotificationContainer';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import { useNotification } from './hooks/useNotification';
 
 const App: React.FC = () => {
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  // Utilisation du hook optimisé pour localStorage
+  const [entries, setEntries] = useLocalStorage<JournalEntry[]>('journalEntries', []);
+  const [lastExportDate, setLastExportDate] = useLocalStorage<string | null>('lastExportDate', null);
+  
   const [isFormVisible, setIsFormVisible] = useState(true);
-  const [lastExportDate, setLastExportDate] = useState<string | null>(null);
+  const { notifications, removeNotification, notifySuccess, notifyError, notifyWarning } = useNotification();
 
-  useEffect(() => {
-    const storedEntries = localStorage.getItem('journalEntries');
-    const storedLastExport = localStorage.getItem('lastExportDate');
-    if (storedEntries) {
-      setEntries(JSON.parse(storedEntries));
-    }
-    if (storedLastExport) {
-      setLastExportDate(storedLastExport);
-    }
-  }, []);
-
-  const saveEntriesToLocalStorage = useCallback((updatedEntries: JournalEntry[]) => {
-    localStorage.setItem('journalEntries', JSON.stringify(updatedEntries));
-  }, []);
-
-  const handleSaveEntry = (newEntry: JournalEntry) => {
+  const handleSaveEntry = useCallback((newEntry: JournalEntry) => {
     const updatedEntries = [newEntry, ...entries];
     setEntries(updatedEntries);
-    saveEntriesToLocalStorage(updatedEntries);
     setIsFormVisible(false);
-  };
+    notifySuccess('Entrée sauvegardée', 'Votre entrée a été enregistrée avec succès.');
+  }, [entries, setEntries, notifySuccess]);
 
-  const downloadData = (onlyNewEntries: boolean = false) => {
+  const downloadData = useCallback((onlyNewEntries: boolean = false) => {
     let dataToExport = entries;
     
     if (onlyNewEntries && lastExportDate) {
@@ -40,27 +31,32 @@ const App: React.FC = () => {
     }
 
     if (dataToExport.length === 0) {
-      alert("Aucune donnée à exporter.");
+      notifyWarning("Aucune donnée à exporter", "Il n'y a aucune nouvelle donnée à télécharger.");
       return;
     }
 
-    const dataStr = JSON.stringify(dataToExport, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `carnet_emotions_${new Date().toISOString().slice(0,10)}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
+    try {
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+      
+      const exportFileDefaultName = `carnet_emotions_${new Date().toISOString().slice(0,10)}.json`;
+      
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
 
-    // Mettre à jour la date du dernier export
-    const currentDate = new Date().toISOString();
-    setLastExportDate(currentDate);
-    localStorage.setItem('lastExportDate', currentDate);
-  };
+      // Mettre à jour la date du dernier export
+      const currentDate = new Date().toISOString();
+      setLastExportDate(currentDate);
+      
+      notifySuccess('Export réussi', `${dataToExport.length} entrée(s) téléchargée(s) avec succès.`);
+    } catch (error) {
+      notifyError('Erreur d\'export', 'Une erreur est survenue lors de l\'export des données.');
+    }
+  }, [entries, lastExportDate, setLastExportDate, notifySuccess, notifyError, notifyWarning]);
 
-  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const importData = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -69,30 +65,52 @@ const App: React.FC = () => {
       try {
         const importedEntries = JSON.parse(e.target?.result as string);
         if (Array.isArray(importedEntries)) {
+          // Validation basique des entrées importées
+          const validEntries = importedEntries.filter(entry => 
+            entry && 
+            typeof entry === 'object' && 
+            entry.id && 
+            entry.timestamp &&
+            entry.situation &&
+            Array.isArray(entry.emotions)
+          );
+
+          if (validEntries.length === 0) {
+            notifyError("Import échoué", "Aucune entrée valide trouvée dans le fichier.");
+            return;
+          }
+
           // Fusionner les entrées importées avec les entrées existantes
-          const mergedEntries = [...importedEntries, ...entries];
+          const mergedEntries = [...validEntries, ...entries];
           // Supprimer les doublons basés sur l'ID
           const uniqueEntries = Array.from(new Map(mergedEntries.map(entry => [entry.id, entry])).values());
           // Trier par date (plus récent en premier)
           const sortedEntries = uniqueEntries.sort((a, b) => 
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
           );
+          
           setEntries(sortedEntries);
-          saveEntriesToLocalStorage(sortedEntries);
+          const importedCount = sortedEntries.length - entries.length;
+          notifySuccess("Import réussi", `${importedCount} nouvelle(s) entrée(s) importée(s).`);
         } else {
-          alert("Le fichier importé n'a pas le bon format.");
+          notifyError("Format invalide", "Le fichier importé n'a pas le bon format.");
         }
       } catch (error) {
-        alert("Erreur lors de l'importation du fichier. Vérifiez que c'est un fichier JSON valide.");
+        notifyError("Erreur d'import", "Erreur lors de l'importation. Vérifiez que c'est un fichier JSON valide.");
       }
     };
     reader.readAsText(file);
     // Réinitialiser l'input pour permettre l'importation du même fichier
     event.target.value = '';
-  };
+  }, [entries, setEntries, notifySuccess, notifyError]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-indigo-50 to-purple-100 py-8 px-4 sm:px-6 lg:px-8">
+      <NotificationContainer 
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
+      
       <header className="text-center mb-10">
         <h1 className="text-4xl sm:text-5xl font-bold text-slate-800">
           <i className="fas fa-book-heart mr-3 text-sky-500"></i>Mon Carnet d'Émotions

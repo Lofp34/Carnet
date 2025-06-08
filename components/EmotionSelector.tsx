@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Emotion } from '../types';
 import { POSITIVE_EMOTIONS, NEGATIVE_EMOTIONS } from '../constants';
 import { EmotionCheckbox } from './EmotionCheckbox';
@@ -8,12 +8,35 @@ interface EmotionSelectorProps {
   onEmotionToggle: (emotionId: string) => void;
 }
 
+// Créer des Sets pour des lookups O(1) au lieu de O(n)
+const POSITIVE_EMOTIONS_SET = new Set(POSITIVE_EMOTIONS.map(e => e.id));
+const NEGATIVE_EMOTIONS_SET = new Set(NEGATIVE_EMOTIONS.map(e => e.id));
+
 export const EmotionSelector: React.FC<EmotionSelectorProps> = ({ selectedEmotions, onEmotionToggle }) => {
   const [activeTab, setActiveTab] = useState<'positive' | 'negative'>('positive');
 
-  const currentEmotions = activeTab === 'positive' ? POSITIVE_EMOTIONS : NEGATIVE_EMOTIONS;
-  const positiveCount = selectedEmotions.filter(id => POSITIVE_EMOTIONS.some(e => e.id === id)).length;
-  const negativeCount = selectedEmotions.filter(id => NEGATIVE_EMOTIONS.some(e => e.id === id)).length;
+  // Memoization des calculs coûteux
+  const currentEmotions = useMemo(() => 
+    activeTab === 'positive' ? POSITIVE_EMOTIONS : NEGATIVE_EMOTIONS, 
+    [activeTab]
+  );
+
+  const { positiveCount, negativeCount } = useMemo(() => {
+    let posCount = 0;
+    let negCount = 0;
+    
+    for (const emotionId of selectedEmotions) {
+      if (POSITIVE_EMOTIONS_SET.has(emotionId)) posCount++;
+      if (NEGATIVE_EMOTIONS_SET.has(emotionId)) negCount++;
+    }
+    
+    return { positiveCount: posCount, negativeCount: negCount };
+  }, [selectedEmotions]);
+
+  // Memoize tab change handler
+  const handleTabChange = useCallback((tab: 'positive' | 'negative') => {
+    setActiveTab(tab);
+  }, []);
 
   return (
     <div className="mb-6">
@@ -23,7 +46,7 @@ export const EmotionSelector: React.FC<EmotionSelectorProps> = ({ selectedEmotio
       <div className="flex bg-slate-100 rounded-lg p-1 mb-4">
         <button
           type="button"
-          onClick={() => setActiveTab('positive')}
+          onClick={() => handleTabChange('positive')}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
             activeTab === 'positive'
               ? 'bg-emerald-500 text-white shadow-md'
@@ -40,7 +63,7 @@ export const EmotionSelector: React.FC<EmotionSelectorProps> = ({ selectedEmotio
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('negative')}
+          onClick={() => handleTabChange('negative')}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
             activeTab === 'negative'
               ? 'bg-red-500 text-white shadow-md'
